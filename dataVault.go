@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/guinso/datavault/dvmeta"
 	mysqlMeta "github.com/guinso/datavault/dvmeta/mysql"
 	"github.com/guinso/datavault/record"
 
@@ -13,9 +14,10 @@ import (
 
 //DataVault handler of data vault
 type DataVault struct {
-	DbName    string
-	DbAddress string
-	Db        *sql.DB
+	DbName     string
+	DbAddress  string
+	Db         *sql.DB
+	MetaReader dvmeta.DataVaultMetaReader
 }
 
 //CreateDV create data vault handler instance
@@ -30,33 +32,22 @@ func CreateDV(address string, username string, password string,
 		return nil, err
 	}
 
-	pingErr := db.Ping() //check connection is valid or not
-
-	if pingErr != nil {
+	//check connection is valid or not
+	if pingErr := db.Ping(); pingErr != nil {
 		return nil, pingErr
 	}
 
-	dv := DataVault{dbName, address, db}
+	meta := mysqlMeta.MetaReader{
+		Db:     db,
+		DbName: dbName}
+
+	dv := DataVault{
+		DbName:     dbName,
+		DbAddress:  address,
+		Db:         db,
+		MetaReader: &meta}
 
 	return &dv, nil
-}
-
-//GetHubs list all data vault's hub
-func (dv *DataVault) GetHubs() []string {
-	//TODO:  handle various database vendor
-	return mysqlMeta.GetDbMetaTableName(dv.Db, dv.DbName, "hub_")
-}
-
-//GetSatalites list all data vault's satelites
-func (dv *DataVault) GetSatalites() []string {
-	//TODO:  handle various database vendor
-	return mysqlMeta.GetDbMetaTableName(dv.Db, dv.DbName, "sat_")
-}
-
-//GetLinks list all data vault's links
-func (dv *DataVault) GetLinks() []string {
-	//TODO:  handle various database vendor
-	return mysqlMeta.GetDbMetaTableName(dv.Db, dv.DbName, "link_")
 }
 
 //InsertRecord to insert new record into database

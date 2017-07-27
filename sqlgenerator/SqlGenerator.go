@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	COLLATE = "utf8mb4_unicode_ci"
+	collate = "utf8mb4_unicode_ci"
 )
 
-// GenerateCreatTableSQL is function to generate "create table" SQL statement
+//GenerateTableSQL to generate "create table" SQL statement
 func GenerateTableSQL(tableDef *TableDefinition) (string, error) {
 	if tableDef == nil {
 		return "", errors.New("input parameter is null")
@@ -92,7 +92,7 @@ func generateColumnSQL(colDef *ColumnDefinition) (string, error) {
 	switch colDef.DataType {
 	case CHAR:
 		return fmt.Sprintf("`%s` char(%d) COLLATE %s %s",
-			colDef.Name, colDef.Length, COLLATE, generateIsNullSQL(colDef.IsNullable)), nil
+			colDef.Name, colDef.Length, collate, generateIsNullSQL(colDef.IsNullable)), nil
 	case INTEGER:
 		return fmt.Sprintf("`%s` int(%d) %s",
 			colDef.Name, colDef.Length, generateIsNullSQL(colDef.IsNullable)), nil
@@ -104,7 +104,7 @@ func generateColumnSQL(colDef *ColumnDefinition) (string, error) {
 			colDef.Name, generateIsNullSQL(colDef.IsNullable)), nil
 	case TEXT:
 		return fmt.Sprintf("`%s` text COLLATE %s %s",
-			colDef.Name, COLLATE, generateIsNullSQL(colDef.IsNullable)), nil
+			colDef.Name, collate, generateIsNullSQL(colDef.IsNullable)), nil
 	case DATE:
 		return fmt.Sprintf("`%s` date %s",
 			colDef.Name, generateIsNullSQL(colDef.IsNullable)), nil

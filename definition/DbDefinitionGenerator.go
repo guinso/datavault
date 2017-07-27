@@ -22,12 +22,12 @@ func createHashKeyColumn(name string) sqlgenerator.ColumnDefinition {
 
 func createEndDateColumn() sqlgenerator.ColumnDefinition {
 	return sqlgenerator.ColumnDefinition{Name: END_DATE,
-		DataType: sqlgenerator.DATE, Length: 0, IsNullable: true}
+		DataType: sqlgenerator.DATETIME, Length: 0, IsNullable: true}
 }
 
 func createLoadDateColumn() sqlgenerator.ColumnDefinition {
 	return sqlgenerator.ColumnDefinition{Name: LOAD_DATE,
-		DataType: sqlgenerator.DATE, Length: 0, IsNullable: false}
+		DataType: sqlgenerator.DATETIME, Length: 0, IsNullable: false}
 }
 
 func createRecordSourceColumn() sqlgenerator.ColumnDefinition {

@@ -1,6 +1,10 @@
 package definition
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/guinso/datavault/sqlgenerator"
+)
 
 func TestDataVaultDefinitionGenerateSQL(t *testing.T) {
 	dvDef := DataVaultDefinition{
@@ -20,17 +24,17 @@ func TestDataVaultDefinitionGenerateSQL(t *testing.T) {
 				Attributes: []SateliteAttributeDefinition{
 					SateliteAttributeDefinition{
 						Name:             "date",
-						DataType:         database.DATE,
+						DataType:         sqlgenerator.DATE,
 						Length:           0,
 						IsNullable:       false,
 						DecimalPrecision: 0},
 					SateliteAttributeDefinition{
 						Name:       "remark",
-						DataType:   database.TEXT,
+						DataType:   sqlgenerator.TEXT,
 						IsNullable: true},
 					SateliteAttributeDefinition{
 						Name:       "status",
-						DataType:   database.INTEGER,
+						DataType:   sqlgenerator.INTEGER,
 						IsNullable: false,
 						Length:     1}}}},
 		Links: []LinkDefinition{
