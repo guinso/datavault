@@ -34,13 +34,13 @@ type EntityInfo struct {
 
 type HubRelationship struct {
 	HubName     string
-	HubRevision string
+	HubRevision int
 	Satelites   []definition.SateliteDefinition
 	Links       []HubLinkRelationship
 }
 
 type HubLinkRelationship struct {
-	Definition definition.LinkDefinition
+	Definition *definition.LinkDefinition
 	Hubs       []definition.HubDefinition
 	Satelites  []definition.SateliteDefinition
 }

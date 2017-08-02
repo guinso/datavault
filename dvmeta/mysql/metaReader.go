@@ -1,7 +1,6 @@
 package mysql
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -362,7 +361,74 @@ func (metaReader *MetaReader) SearchEntities(dbHandler rdbmstool.DbHandlerProxy,
 
 func (metaReader *MetaReader) GetRelationship(dbHandler rdbmstool.DbHandlerProxy, hubName string, hubRevision int) (*dvmeta.HubRelationship, error) {
 	//TODO: get related satalites which refer to specified hub
-	return nil, errors.New("Not implemented yet...")
+	//return nil, errors.New("Not implemented yet...")
+	hubTableName := fmt.Sprintf("hub_%s_rev%d", stringtool.ToSnakeCase(hubName), hubRevision)
+	tables, linkErr := mysqlMeta.GetLinkedFK(dbHandler, metaReader.DbName, hubTableName)
+	if linkErr != nil {
+		return nil, linkErr
+	}
+
+	result := dvmeta.HubRelationship{
+		HubName:     hubName,
+		HubRevision: hubRevision,
+		Satelites:   []definition.SateliteDefinition{},
+		Links:       []dvmeta.HubLinkRelationship{},
+	}
+	for _, tableName := range tables {
+		entityType, name, rev, err := extractDbEntityName(tableName)
+		if err != nil {
+			return nil, err
+		}
+
+		switch entityType {
+		case definition.SATELITE:
+			satDef, satErr := metaReader.GetSateliteDefinition(name, rev, dbHandler)
+			if satErr != nil {
+				return nil, satErr
+			}
+			result.Satelites = append(result.Satelites, *satDef)
+			break
+		case definition.LINK:
+			linkDef, linkErr := metaReader.GetLinkDefinition(name, rev, dbHandler)
+			if linkErr != nil {
+				return nil, linkErr
+			}
+
+			//append hub link relationship...
+			hubLink, hubLinkErr := getHubLinkRelationship(dbHandler, linkDef, hubName, hubRevision)
+			if hubLinkErr != nil {
+				return nil, hubLinkErr
+			}
+
+			result.Links = append(result.Links, *hubLink)
+			break
+		}
+	}
+
+	return &result, nil
+}
+
+func getHubLinkRelationship(dbHandler rdbmstool.DbHandlerProxy, linkDef *definition.LinkDefinition,
+	hubName string, hubRevision int) (*dvmeta.HubLinkRelationship, error) {
+
+	hubLink := dvmeta.HubLinkRelationship{
+		Definition: linkDef,
+		Hubs:       []definition.HubDefinition{},
+		Satelites:  []definition.SateliteDefinition{},
+	}
+
+	expectedTableName := fmt.Sprintf("hub_%s_rev%d", stringtool.ToSnakeCase(hubName), hubRevision)
+
+	for _, hubRef := range linkDef.HubReferences {
+
+		tmpTableName := fmt.Sprintf("hub_%s_rev%d", stringtool.ToSnakeCase(hubRef.HubName), hubRef.Revision)
+		//skip entry point's hub name
+		if strings.Compare(tmpTableName, expectedTableName) != 0 {
+
+		}
+	}
+
+	return &hubLink, nil
 }
 
 func (metaReader *MetaReader) makeDVHashKey(entityName string) string {
