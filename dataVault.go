@@ -38,7 +38,6 @@ func CreateDV(address string, username string, password string,
 	}
 
 	meta := mysqlMeta.MetaReader{
-		Db:     db,
 		DbName: dbName}
 
 	dv := DataVault{

@@ -14,9 +14,11 @@ type DataVaultMetaReader interface {
 	GetSateliteDefinition(satName string, revision int,
 		dbHandler rdbmstool.DbHandlerProxy) (*definition.SateliteDefinition, error)
 
-	GetAllHubs() []EntityInfo
-	GetAllLinks() []EntityInfo
-	GetAllSatelites() []EntityInfo
+	GetAllHubs(dbHandler rdbmstool.DbHandlerProxy) []EntityInfo
+	GetAllLinks(dbHandler rdbmstool.DbHandlerProxy) []EntityInfo
+	GetAllSatelites(dbHandler rdbmstool.DbHandlerProxy) []EntityInfo
+
+	SearchEntities(dbHandler rdbmstool.DbHandlerProxy, searchKeyword string) []EntityInfo
 }
 
 //EntityInfo basic information of an data vault entity

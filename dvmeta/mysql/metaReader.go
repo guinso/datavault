@@ -1,8 +1,6 @@
 package mysql
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,7 +14,6 @@ import (
 
 //MetaReader implementation of both DataVaultMetaReader and DataVaultMetaReaderTx
 type MetaReader struct {
-	Db     *sql.DB
 	DbName string
 }
 
@@ -107,10 +104,12 @@ func (metaReader *MetaReader) GetLinkDefinition(linkName string, revision int, d
 	hasHashKey := false
 	hasLoadDate := false
 	hasRecordSource := false
+
+	expectedhasKey := metaReader.makeDVHashKey(linkName)
 	for _, col := range tableDef.Columns {
 		switch col.DataType {
 		case rdbmstool.CHAR:
-			if strings.Compare(col.Name, metaReader.makeDVHashKey(linkName)) == 0 {
+			if strings.Compare(col.Name, expectedhasKey) == 0 {
 				hasHashKey = true
 			} else if strings.Compare(col.Name, "record_source") == 0 {
 				hasRecordSource = true
@@ -163,14 +162,162 @@ func (metaReader *MetaReader) GetLinkDefinition(linkName string, revision int, d
 	return &linkDefinition, nil
 }
 
-//GetSateliteDefinition to get satelite metainfo based on satelite name and its revision number
+//GetSateliteDefinition get satelite metainfo based on satelite name and its revision number
 func (metaReader *MetaReader) GetSateliteDefinition(satName string, revision int, dbHandler rdbmstool.DbHandlerProxy) (*definition.SateliteDefinition, error) {
-	return nil, errors.New("Not implemented yet")
+
+	satDbName := fmt.Sprintf("sat_%s_rev%d", stringtool.ToSnakeCase(satName), revision)
+
+	//read all FK records
+	tableDef, tableErr := mysqlMeta.GetTableDefinition(dbHandler, metaReader.DbName, satDbName)
+	if tableErr != nil {
+		return nil, tableErr
+	}
+
+	satDefinition := definition.SateliteDefinition{
+		Name:       satName,
+		Revision:   revision,
+		Attributes: []definition.SateliteAttributeDefinition{},
+	}
+
+	hasHashKey := false
+	hasLoadDate := false
+	hasEndDate := false
+	hasRecordSource := false
+	//validate one and only foreign key
+	if len(tableDef.ForiegnKeys) != 1 {
+		return nil, fmt.Errorf("Satelite %s only allow one FK,"+
+			" but found %d instead", satName, len(tableDef.ForiegnKeys))
+	}
+	fk := tableDef.ForiegnKeys[0]
+	if len(fk.Columns) != 1 {
+		return nil, fmt.Errorf("Satelite %s FK only allow one pair "+
+			"binding but found %d instead", satName, len(fk.Columns))
+	}
+	entity, refName, refrev, refErr := extractDbEntityName(fk.ReferenceTableName)
+	if refErr != nil {
+		return nil, fmt.Errorf("Satelite %s FK has invalid reference table, %s: %s",
+			satName, fk.ReferenceTableName, refErr.Error())
+	}
+	if entity != definition.HUB {
+		return nil, fmt.Errorf("Satelite %s FK only allow to refer hub entity but found %s",
+			satName, entity.String())
+	}
+	satDefinition.HubReference = &definition.HubReference{
+		HubName:  refName,
+		Revision: refrev}
+
+	for _, col := range tableDef.Columns {
+		switch col.DataType {
+		case rdbmstool.BOOLEAN:
+			satDefinition.Attributes = append(satDefinition.Attributes,
+				definition.SateliteAttributeDefinition{
+					Name:       stringtool.SnakeToCamelCase(col.Name),
+					DataType:   col.DataType,
+					IsNullable: col.IsNullable})
+			break
+		case rdbmstool.CHAR:
+			colHashKey := fmt.Sprintf("%s_hash_key", stringtool.ToSnakeCase(refName))
+
+			if strings.Compare(col.Name, "record_source") == 0 {
+				hasRecordSource = true
+			} else if strings.Compare(col.Name, colHashKey) == 0 {
+				hasHashKey = true
+			} else {
+				satDefinition.Attributes = append(satDefinition.Attributes,
+					definition.SateliteAttributeDefinition{
+						Name:       stringtool.SnakeToCamelCase(col.Name),
+						DataType:   col.DataType,
+						Length:     col.Length,
+						IsNullable: col.IsNullable})
+			}
+			break
+		case rdbmstool.DATE:
+			satDefinition.Attributes = append(satDefinition.Attributes,
+				definition.SateliteAttributeDefinition{
+					Name:       stringtool.SnakeToCamelCase(col.Name),
+					DataType:   col.DataType,
+					IsNullable: col.IsNullable})
+			break
+		case rdbmstool.DATETIME:
+			if strings.Compare(col.Name, "load_date") == 0 {
+				hasLoadDate = true
+			} else if strings.Compare(col.Name, "end_date") == 0 {
+				hasEndDate = true
+			} else {
+				satDefinition.Attributes = append(satDefinition.Attributes,
+					definition.SateliteAttributeDefinition{
+						Name:       stringtool.SnakeToCamelCase(col.Name),
+						DataType:   col.DataType,
+						IsNullable: col.IsNullable})
+			}
+			break
+		case rdbmstool.DECIMAL:
+			satDefinition.Attributes = append(satDefinition.Attributes,
+				definition.SateliteAttributeDefinition{
+					Name:             stringtool.SnakeToCamelCase(col.Name),
+					DataType:         col.DataType,
+					IsNullable:       col.IsNullable,
+					Length:           col.Length,
+					DecimalPrecision: col.DecimalPrecision})
+			break
+		case rdbmstool.FLOAT:
+			satDefinition.Attributes = append(satDefinition.Attributes,
+				definition.SateliteAttributeDefinition{
+					Name:       stringtool.SnakeToCamelCase(col.Name),
+					DataType:   col.DataType,
+					IsNullable: col.IsNullable})
+			break
+		case rdbmstool.INTEGER:
+			satDefinition.Attributes = append(satDefinition.Attributes,
+				definition.SateliteAttributeDefinition{
+					Name:       stringtool.SnakeToCamelCase(col.Name),
+					DataType:   col.DataType,
+					IsNullable: col.IsNullable,
+					Length:     col.Length})
+			break
+		case rdbmstool.TEXT:
+			satDefinition.Attributes = append(satDefinition.Attributes,
+				definition.SateliteAttributeDefinition{
+					Name:       stringtool.SnakeToCamelCase(col.Name),
+					DataType:   col.DataType,
+					IsNullable: col.IsNullable})
+			break
+		case rdbmstool.VARCHAR:
+			satDefinition.Attributes = append(satDefinition.Attributes,
+				definition.SateliteAttributeDefinition{
+					Name:       stringtool.SnakeToCamelCase(col.Name),
+					DataType:   col.DataType,
+					IsNullable: col.IsNullable,
+					Length:     col.Length})
+			break
+		default:
+			return nil, fmt.Errorf("Unsupported datatype for Satelite definition: %s",
+				col.DataType.String())
+		}
+	}
+
+	if !hasHashKey {
+		return nil, fmt.Errorf("Hash key column not found in satelite %s", satDbName)
+	}
+
+	if !hasLoadDate {
+		return nil, fmt.Errorf("Load date column not found in satelite %s", satDbName)
+	}
+
+	if !hasEndDate {
+		return nil, fmt.Errorf("End date column not found in satelite %s", satDbName)
+	}
+
+	if !hasRecordSource {
+		return nil, fmt.Errorf("Record source column not found in satelite %s", satDbName)
+	}
+
+	return &satDefinition, nil
 }
 
 //GetAllHubs list all available hub(s) entity in given database schema
-func (metaReader *MetaReader) GetAllHubs() []dvmeta.EntityInfo {
-	x, err := getTableName(metaReader.Db, metaReader.DbName, "hub_")
+func (metaReader *MetaReader) GetAllHubs(dbHandler rdbmstool.DbHandlerProxy) []dvmeta.EntityInfo {
+	x, err := getTableName(dbHandler, metaReader.DbName, "hub_%")
 
 	if err != nil {
 		return []dvmeta.EntityInfo{}
@@ -180,8 +327,8 @@ func (metaReader *MetaReader) GetAllHubs() []dvmeta.EntityInfo {
 }
 
 //GetAllLinks list all available link(s) entity in given database schema
-func (metaReader *MetaReader) GetAllLinks() []dvmeta.EntityInfo {
-	x, err := getTableName(metaReader.Db, metaReader.DbName, "link_")
+func (metaReader *MetaReader) GetAllLinks(dbHandler rdbmstool.DbHandlerProxy) []dvmeta.EntityInfo {
+	x, err := getTableName(dbHandler, metaReader.DbName, "link_%")
 
 	if err != nil {
 		return []dvmeta.EntityInfo{}
@@ -191,8 +338,19 @@ func (metaReader *MetaReader) GetAllLinks() []dvmeta.EntityInfo {
 }
 
 //GetAllSatelites list all available satelite(s) entity in given database schema
-func (metaReader *MetaReader) GetAllSatelites() []dvmeta.EntityInfo {
-	x, err := getTableName(metaReader.Db, metaReader.DbName, "satelite_")
+func (metaReader *MetaReader) GetAllSatelites(dbHandler rdbmstool.DbHandlerProxy) []dvmeta.EntityInfo {
+	x, err := getTableName(dbHandler, metaReader.DbName, "sat_%")
+
+	if err != nil {
+		return []dvmeta.EntityInfo{}
+	}
+
+	return x
+}
+
+//SearchEntities list all available data vault entities based on given keyword
+func (metaReader *MetaReader) SearchEntities(dbHandler rdbmstool.DbHandlerProxy, searchKeyword string) []dvmeta.EntityInfo {
+	x, err := getTableName(dbHandler, metaReader.DbName, "%"+searchKeyword+"%")
 
 	if err != nil {
 		return []dvmeta.EntityInfo{}
@@ -206,9 +364,9 @@ func (metaReader *MetaReader) makeDVHashKey(entityName string) string {
 }
 
 //GetDbMetaTableName to get list of datatables' name which start with provided keyword
-func getTableName(db rdbmstool.DbHandlerProxy, databaseName string, tableNamePrefix string) ([]dvmeta.EntityInfo, error) {
+func getTableName(db rdbmstool.DbHandlerProxy, databaseName string, keyword string) ([]dvmeta.EntityInfo, error) {
 
-	tables, tableErr := mysqlMeta.GetTableNames(db, databaseName, tableNamePrefix+"%")
+	tables, tableErr := mysqlMeta.GetTableNames(db, databaseName, keyword)
 	if tableErr != nil {
 		return nil, fmt.Errorf("DV MySQL meta reader fail to query data table from database: " + tableErr.Error())
 	}
@@ -234,15 +392,15 @@ func extractDbEntityName(dbTableName string) (
 	//validate prefix
 	var prefix string
 	var entityType definition.EntityType
-	if strings.Compare(dbTableName, "hub_") == 0 {
+	if strings.HasPrefix(dbTableName, "hub_") {
 		prefix = "hub_"
 		entityType = definition.HUB
 
-	} else if strings.Compare(dbTableName, "link_") == 0 {
+	} else if strings.HasPrefix(dbTableName, "link_") {
 		prefix = "link_"
 		entityType = definition.LINK
 
-	} else if strings.Compare(dbTableName, "sat_") == 0 {
+	} else if strings.HasPrefix(dbTableName, "sat_") {
 		prefix = "sat_"
 		entityType = definition.SATELITE
 

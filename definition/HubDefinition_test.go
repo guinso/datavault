@@ -20,21 +20,37 @@ func TestCreateHub(t *testing.T) {
 		return
 	}
 
-	//drop link
-	if _, err := db.Exec("DROP TABLE IF EXISTS `link_invoice_order_item_rev0`"); err != nil {
-		t.Errorf("Fail to drop link %s, revision %d: %s", "InvoiceOrderItem", 0, err.Error())
+	tx, txErr := db.Begin()
+	if txErr != nil {
+		t.Error(txErr.Error())
 		return
 	}
 
-	_testCreateHub(db, t, &HubDefinition{
+	//drop link
+	if _, err := tx.Exec("DROP TABLE IF EXISTS `link_invoice_order_item_rev0`"); err != nil {
+		t.Errorf("Fail to drop link %s, revision %d: %s", "InvoiceOrderItem", 0, err.Error())
+		tx.Rollback()
+		return
+	}
+
+	//drop satelite
+	if _, err := tx.Exec("DROP TABLE IF EXISTS `sat_invoice_rev0`"); err != nil {
+		t.Errorf("Fail to drop satelite %s, revision %d: %s", "InvoiceDetails", 0, err.Error())
+		tx.Rollback()
+		return
+	}
+
+	_testCreateHub(tx, t, &HubDefinition{
 		Name:         "Invoice",
 		Revision:     0,
 		BusinessKeys: []string{"InvoiceNo"}})
 
-	_testCreateHub(db, t, &HubDefinition{
+	_testCreateHub(tx, t, &HubDefinition{
 		Name:         "InvoiceOrder",
 		Revision:     0,
 		BusinessKeys: []string{}})
+
+	tx.Rollback()
 }
 
 func _testCreateHub(db rdbmstool.DbHandlerProxy, t *testing.T, hubDef *HubDefinition) {
