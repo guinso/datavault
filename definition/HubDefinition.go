@@ -3,7 +3,7 @@ package definition
 import (
 	"fmt"
 
-	"github.com/guinso/datavault/sqlgenerator"
+	"github.com/guinso/rdbmstool"
 	"github.com/guinso/stringtool"
 )
 
@@ -28,13 +28,13 @@ func (hubDef *HubDefinition) GetDbTableName() string {
 func (hubDef *HubDefinition) GenerateSQL() (string, error) {
 	var sql string
 
-	tableDef := sqlgenerator.TableDefinition{
+	tableDef := rdbmstool.TableDefinition{
 		Name:        hubDef.GetDbTableName(),
 		PrimaryKey:  []string{hubDef.GetHashKey()},
-		UniqueKeys:  []sqlgenerator.UniqueKeyDefinition{},
-		ForiegnKeys: []sqlgenerator.ForeignKeyDefinition{},
-		Indices:     []sqlgenerator.IndexKeyDefinition{},
-		Columns: []sqlgenerator.ColumnDefinition{
+		UniqueKeys:  []rdbmstool.UniqueKeyDefinition{},
+		ForiegnKeys: []rdbmstool.ForeignKeyDefinition{},
+		Indices:     []rdbmstool.IndexKeyDefinition{},
+		Columns: []rdbmstool.ColumnDefinition{
 			createHashKeyColumn(hubDef.Name),
 			createLoadDateColumn(),
 			createRecordSourceColumn()}}
@@ -44,17 +44,17 @@ func (hubDef *HubDefinition) GenerateSQL() (string, error) {
 
 		for _, bk := range hubDef.BusinessKeys {
 			tableDef.Columns = append(tableDef.Columns,
-				sqlgenerator.ColumnDefinition{Name: stringtool.ToSnakeCase(bk),
-					DataType: sqlgenerator.CHAR, Length: 100, IsNullable: false})
+				rdbmstool.ColumnDefinition{Name: stringtool.ToSnakeCase(bk),
+					DataType: rdbmstool.CHAR, Length: 100, IsNullable: false})
 
 			uks = append(uks, stringtool.ToSnakeCase(bk))
 		}
 
 		tableDef.UniqueKeys = append(tableDef.UniqueKeys,
-			sqlgenerator.UniqueKeyDefinition{ColumnNames: uks})
+			rdbmstool.UniqueKeyDefinition{ColumnNames: uks})
 	}
 
-	sql, err := sqlgenerator.GenerateTableSQL(&tableDef)
+	sql, err := rdbmstool.GenerateTableSQL(&tableDef)
 
 	if err != nil {
 		return "", err

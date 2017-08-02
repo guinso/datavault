@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/guinso/datavault/definition"
-	"github.com/guinso/datavault/sqlgenerator"
+	"github.com/guinso/rdbmstool"
 	"github.com/guinso/stringtool"
 )
 
@@ -89,39 +89,39 @@ func (attrValue *SateliteAttrInsertRecord) convertValueToString() (string, error
 	metaType := reflect.TypeOf(attrValue.Value)
 	dataType := attrValue.Meta.DataType
 
-	if dataType == sqlgenerator.BOOLEAN && metaType.Kind() == reflect.Bool {
+	if dataType == rdbmstool.BOOLEAN && metaType.Kind() == reflect.Bool {
 		tmpBool, _ := attrValue.Value.(bool)
 		if tmpBool {
 			return "true", nil
 		}
 		return "false", nil
 
-	} else if dataType == sqlgenerator.DATE && metaType == reflect.TypeOf(time.Time{}) {
+	} else if dataType == rdbmstool.DATE && metaType == reflect.TypeOf(time.Time{}) {
 		tmpTime, _ := attrValue.Value.(time.Time)
 		return fmt.Sprintf("'%s'", tmpTime.Format("2006-01-02")), nil
 
-	} else if dataType == sqlgenerator.DATETIME && metaType == reflect.TypeOf(time.Time{}) {
+	} else if dataType == rdbmstool.DATETIME && metaType == reflect.TypeOf(time.Time{}) {
 		tmpTime, _ := attrValue.Value.(time.Time)
 		return fmt.Sprintf("'%s'", tmpTime.Format("2006-01-02 15:04:05")), nil
 
-	} else if dataType == sqlgenerator.DECIMAL &&
+	} else if dataType == rdbmstool.DECIMAL &&
 		(metaType.Kind() == reflect.Float32 || metaType.Kind() == reflect.Float64) {
 		tmpFloat, _ := attrValue.Value.(float64)
 		return fmt.Sprintf("%."+strconv.Itoa(attrValue.Meta.DecimalPrecision)+"f", tmpFloat), nil
 
-	} else if dataType == sqlgenerator.FLOAT && metaType.Kind() == reflect.Float32 {
+	} else if dataType == rdbmstool.FLOAT && metaType.Kind() == reflect.Float32 {
 		tmpFloat, _ := attrValue.Value.(float32)
 		return fmt.Sprintf("%f", tmpFloat), nil
 
-	} else if dataType == sqlgenerator.INTEGER && metaType.Kind() == reflect.Int {
+	} else if dataType == rdbmstool.INTEGER && metaType.Kind() == reflect.Int {
 		tmpInt, _ := attrValue.Value.(int)
 		return fmt.Sprintf("%d", tmpInt), nil
 
-	} else if dataType == sqlgenerator.TEXT && metaType.Kind() == reflect.String {
+	} else if dataType == rdbmstool.TEXT && metaType.Kind() == reflect.String {
 		tmpStr, _ := attrValue.Value.(string)
 		return fmt.Sprintf("'%s'", tmpStr), nil
 
-	} else if dataType == sqlgenerator.CHAR && metaType.Kind() == reflect.String {
+	} else if dataType == rdbmstool.CHAR && metaType.Kind() == reflect.String {
 		tmpStr, _ := attrValue.Value.(string)
 		return fmt.Sprintf("'%s'", tmpStr), nil
 

@@ -10,27 +10,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func TestGetDataTableColumns(t *testing.T) {
-	db, err := sql.Open("mysql", fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?charset=utf8", "root", "", "localhost", 3306, "test"))
-
-	if err != nil {
-		t.Error(err.Error())
-		return
-	}
-
-	cols, err := getDataTableColumns(db, "test", "account")
-	if err != nil {
-		t.Error(err.Error())
-		return
-	}
-
-	if len(cols) == 0 {
-		t.Error("No column found for table 'account'")
-		return
-	}
-}
-
 func TestGetHubDefinition(t *testing.T) {
 	db, err := sql.Open("mysql", fmt.Sprintf(
 		"%s:%s@tcp(%s:%d)/%s?charset=utf8", "root", "", "localhost", 3306, "test"))
@@ -40,14 +19,23 @@ func TestGetHubDefinition(t *testing.T) {
 		return
 	}
 
+	transaction, txErr := db.Begin()
+
+	if txErr != nil {
+		t.Error(txErr.Error())
+		transaction.Rollback()
+		return
+	}
+
 	metaReader := MetaReader{
 		Db:     db,
 		DbName: "test"}
 
-	hubDef, err := metaReader.GetHubDefinition("TaxInvoice", 0)
+	hubDef, err := metaReader.GetHubDefinition("TaxInvoice", 0, transaction)
 
 	if err != nil {
 		t.Error(err.Error())
+		transaction.Rollback()
 		return
 	}
 
@@ -58,4 +46,6 @@ func TestGetHubDefinition(t *testing.T) {
 	if hubDef.Revision != 0 {
 		t.Errorf("Expect hub revision is %d, given %d instead", 0, hubDef.Revision)
 	}
+
+	transaction.Rollback()
 }

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/guinso/datavault/sqlgenerator"
+	"github.com/guinso/rdbmstool"
 	"github.com/guinso/stringtool"
 )
 
@@ -28,15 +28,22 @@ func (linkDef *LinkDefinition) GetDbTableName() string {
 // GenerateSQL is to generate SQL statement based on link definition
 func (linkDef *LinkDefinition) GenerateSQL() (string, error) {
 	if linkDef == nil || linkDef.HubReferences == nil || len(linkDef.HubReferences) < 2 {
+		//why atleast two hub reference?
+		//1. point to main hub
+		//2. point to reference hub (one or more)
+		//example:
+		//<link_invoice_address>
+		//ref 1 is point to invoice (point to main hub)
+		//ref 2 is point to address (point to reference hub)
 		return "", errors.New("link definition must has atleast two hub reference")
 	}
 
-	tableDef := sqlgenerator.TableDefinition{
+	tableDef := rdbmstool.TableDefinition{
 		Name:        linkDef.GetDbTableName(),
 		PrimaryKey:  []string{linkDef.GetHashKey()},
-		UniqueKeys:  []sqlgenerator.UniqueKeyDefinition{},
-		ForiegnKeys: []sqlgenerator.ForeignKeyDefinition{},
-		Columns: []sqlgenerator.ColumnDefinition{
+		UniqueKeys:  []rdbmstool.UniqueKeyDefinition{},
+		ForiegnKeys: []rdbmstool.ForeignKeyDefinition{},
+		Columns: []rdbmstool.ColumnDefinition{
 			createHashKeyColumn(linkDef.Name),
 			createLoadDateColumn(),
 			createRecordSourceColumn()}}
@@ -45,15 +52,17 @@ func (linkDef *LinkDefinition) GenerateSQL() (string, error) {
 		tableDef.Columns = append(tableDef.Columns, createHashKeyColumn(hubRef.HubName))
 
 		tableDef.Indices = append(tableDef.Indices,
-			sqlgenerator.IndexKeyDefinition{ColumnNames: []string{hubRef.GetHashKey()}})
+			rdbmstool.IndexKeyDefinition{ColumnNames: []string{hubRef.GetHashKey()}})
 		tableDef.ForiegnKeys = append(tableDef.ForiegnKeys,
-			sqlgenerator.ForeignKeyDefinition{
-				ColumnName:          hubRef.GetHashKey(),
-				ReferenceTableName:  hubRef.GetDbTableName(),
-				ReferenceColumnName: hubRef.GetHashKey()})
+			rdbmstool.ForeignKeyDefinition{
+				Columns: []rdbmstool.FKColumnDefinition{
+					rdbmstool.FKColumnDefinition{
+						ColumnName:    hubRef.GetHashKey(),
+						RefColumnName: hubRef.GetHashKey()}},
+				ReferenceTableName: hubRef.GetDbTableName()})
 	}
 
-	sql, err := sqlgenerator.GenerateTableSQL(&tableDef)
+	sql, err := rdbmstool.GenerateTableSQL(&tableDef)
 	if err != nil {
 		return "", err
 	}

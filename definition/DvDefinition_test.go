@@ -3,7 +3,7 @@ package definition
 import (
 	"testing"
 
-	"github.com/guinso/datavault/sqlgenerator"
+	"github.com/guinso/rdbmstool"
 )
 
 func TestDataVaultDefinitionGenerateSQL(t *testing.T) {
@@ -24,17 +24,17 @@ func TestDataVaultDefinitionGenerateSQL(t *testing.T) {
 				Attributes: []SateliteAttributeDefinition{
 					SateliteAttributeDefinition{
 						Name:             "date",
-						DataType:         sqlgenerator.DATE,
+						DataType:         rdbmstool.DATE,
 						Length:           0,
 						IsNullable:       false,
 						DecimalPrecision: 0},
 					SateliteAttributeDefinition{
 						Name:       "remark",
-						DataType:   sqlgenerator.TEXT,
+						DataType:   rdbmstool.TEXT,
 						IsNullable: true},
 					SateliteAttributeDefinition{
 						Name:       "status",
-						DataType:   sqlgenerator.INTEGER,
+						DataType:   rdbmstool.INTEGER,
 						IsNullable: false,
 						Length:     1}}}},
 		Links: []LinkDefinition{

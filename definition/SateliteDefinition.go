@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/guinso/datavault/sqlgenerator"
+	"github.com/guinso/rdbmstool"
 	"github.com/guinso/stringtool"
 )
 
@@ -19,7 +19,7 @@ type SateliteDefinition struct {
 //SateliteAttributeDefinition is schema to descibe satelite attributes structure
 type SateliteAttributeDefinition struct {
 	Name             string
-	DataType         sqlgenerator.ColumnDataType
+	DataType         rdbmstool.ColumnDataType
 	Length           int
 	IsNullable       bool
 	DecimalPrecision int
@@ -44,25 +44,27 @@ func (satDef *SateliteDefinition) GenerateSQL() (string, error) {
 		return "", errors.New("Satelite must has atleast one attribute")
 	}
 
-	tableDef := sqlgenerator.TableDefinition{
+	tableDef := rdbmstool.TableDefinition{
 		Name: fmt.Sprintf("sat_%s_rev%d", stringtool.ToSnakeCase(satDef.Name), satDef.Revision),
-		Columns: []sqlgenerator.ColumnDefinition{
+		Columns: []rdbmstool.ColumnDefinition{
 			createHashKeyColumn(satDef.HubReference.HubName),
 			createLoadDateColumn(),
 			createEndDateColumn(),
 			createRecordSourceColumn()},
 		PrimaryKey: []string{satDef.HubReference.GetHashKey(), LOAD_DATE},
-		ForiegnKeys: []sqlgenerator.ForeignKeyDefinition{
-			sqlgenerator.ForeignKeyDefinition{
-				ColumnName:          satDef.HubReference.GetHashKey(),
-				ReferenceColumnName: satDef.HubReference.GetHashKey(),
-				ReferenceTableName:  satDef.HubReference.GetDbTableName()}},
-		UniqueKeys: []sqlgenerator.UniqueKeyDefinition{},
-		Indices: []sqlgenerator.IndexKeyDefinition{
+		ForiegnKeys: []rdbmstool.ForeignKeyDefinition{
+			rdbmstool.ForeignKeyDefinition{
+				ReferenceTableName: satDef.HubReference.GetDbTableName(),
+				Columns: []rdbmstool.FKColumnDefinition{
+					rdbmstool.FKColumnDefinition{
+						ColumnName:    satDef.HubReference.GetHashKey(),
+						RefColumnName: satDef.HubReference.GetHashKey()}}}},
+		UniqueKeys: []rdbmstool.UniqueKeyDefinition{},
+		Indices: []rdbmstool.IndexKeyDefinition{
 			createIndexKey(satDef.HubReference.GetHashKey())}}
 
 	for _, attribute := range satDef.Attributes {
-		tableDef.Columns = append(tableDef.Columns, sqlgenerator.ColumnDefinition{
+		tableDef.Columns = append(tableDef.Columns, rdbmstool.ColumnDefinition{
 			Name:             stringtool.ToSnakeCase(attribute.Name),
 			DataType:         attribute.DataType,
 			Length:           attribute.Length,
@@ -70,7 +72,7 @@ func (satDef *SateliteDefinition) GenerateSQL() (string, error) {
 			DecimalPrecision: attribute.DecimalPrecision})
 	}
 
-	sql, err := sqlgenerator.GenerateTableSQL(&tableDef)
+	sql, err := rdbmstool.GenerateTableSQL(&tableDef)
 	if err != nil {
 		return "", err
 	}
