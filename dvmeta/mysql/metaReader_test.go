@@ -30,7 +30,7 @@ func TestGetHubDefinition(t *testing.T) {
 	metaReader := MetaReader{
 		DbName: "test"}
 
-	hubDef, err := metaReader.GetHubDefinition("TaxInvoice", 0, transaction)
+	hubDef, err := metaReader.GetHubDefinition("Invoice", 0, transaction)
 
 	if err != nil {
 		t.Error(err.Error())
@@ -38,8 +38,8 @@ func TestGetHubDefinition(t *testing.T) {
 		return
 	}
 
-	if strings.Compare(hubDef.Name, "TaxInvoice") != 0 {
-		t.Errorf("Expect hub name is %s, given %s instead", "TaxInvoice", hubDef.Name)
+	if strings.Compare(hubDef.Name, "Invoice") != 0 {
+		t.Errorf("Expect hub name is %s, given %s instead", "Invoice", hubDef.Name)
 	}
 
 	if hubDef.Revision != 0 {

@@ -19,6 +19,8 @@ type DataVaultMetaReader interface {
 	GetAllSatelites(dbHandler rdbmstool.DbHandlerProxy) []EntityInfo
 
 	SearchEntities(dbHandler rdbmstool.DbHandlerProxy, searchKeyword string) []EntityInfo
+
+	GetRelationship(dbHandler rdbmstool.DbHandlerProxy, hubName string, hubRevision int) (*HubRelationship, error)
 }
 
 //EntityInfo basic information of an data vault entity
@@ -28,4 +30,17 @@ type EntityInfo struct {
 	Type     definition.EntityType
 	Name     string
 	Revision int
+}
+
+type HubRelationship struct {
+	HubName     string
+	HubRevision string
+	Satelites   []definition.SateliteDefinition
+	Links       []HubLinkRelationship
+}
+
+type HubLinkRelationship struct {
+	Definition definition.LinkDefinition
+	Hubs       []definition.HubDefinition
+	Satelites  []definition.SateliteDefinition
 }

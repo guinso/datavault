@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -357,6 +358,11 @@ func (metaReader *MetaReader) SearchEntities(dbHandler rdbmstool.DbHandlerProxy,
 	}
 
 	return x
+}
+
+func (metaReader *MetaReader) GetRelationship(dbHandler rdbmstool.DbHandlerProxy, hubName string, hubRevision int) (*dvmeta.HubRelationship, error) {
+	//TODO: get related satalites which refer to specified hub
+	return nil, errors.New("Not implemented yet...")
 }
 
 func (metaReader *MetaReader) makeDVHashKey(entityName string) string {
