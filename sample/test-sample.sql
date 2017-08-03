@@ -27,7 +27,6 @@ CREATE TABLE `hub_invoice_rev0` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-
 DROP TABLE IF EXISTS `link_invoice_order_item_rev0`;
 CREATE TABLE `link_invoice_order_item_rev0` (
   `invoice_order_item_hash_key` char(32) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -40,6 +39,22 @@ CREATE TABLE `link_invoice_order_item_rev0` (
   KEY `invoice_order_hash_key` (`invoice_order_hash_key`),
   CONSTRAINT `link_invoice_order_item_rev0_ibfk_1` FOREIGN KEY (`invoice_hash_key`) REFERENCES `hub_invoice_rev0` (`invoice_hash_key`),
   CONSTRAINT `link_invoice_order_item_rev0_ibfk_2` FOREIGN KEY (`invoice_order_hash_key`) REFERENCES `hub_invoice_order_rev0` (`invoice_order_hash_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+DROP TABLE IF EXISTS `sat_invoice_order_rev0`;
+CREATE TABLE `sat_invoice_order_rev0` (
+  `invoice_order_hash_key` char(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `load_date` datetime NOT NULL,
+  `end_date` datetime DEFAULT NULL,
+  `record_source` char(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no` int(10) NOT NULL,
+  `description` char(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unit_price` decimal(10,2) NOT NULL,
+  `qty` int(10) NOT NULL,
+  PRIMARY KEY (`invoice_order_hash_key`,`load_date`),
+  KEY `invoice_order_hash_key` (`invoice_order_hash_key`),
+  CONSTRAINT `sat_invoice_order_rev0_ibfk_1` FOREIGN KEY (`invoice_order_hash_key`) REFERENCES `hub_invoice_order_rev0` (`invoice_order_hash_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -58,4 +73,4 @@ CREATE TABLE `sat_invoice_rev0` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- 2017-08-02 09:25:56
+-- 2017-08-03 02:51:26

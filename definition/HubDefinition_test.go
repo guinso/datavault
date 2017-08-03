@@ -35,7 +35,12 @@ func TestCreateHub(t *testing.T) {
 
 	//drop satelite
 	if _, err := tx.Exec("DROP TABLE IF EXISTS `sat_invoice_rev0`"); err != nil {
-		t.Errorf("Fail to drop satelite %s, revision %d: %s", "InvoiceDetails", 0, err.Error())
+		t.Errorf("Fail to drop satelite %s, revision %d: %s", "Invoice", 0, err.Error())
+		tx.Rollback()
+		return
+	}
+	if _, err := tx.Exec("DROP TABLE IF EXISTS `sat_invoice_order_rev0`"); err != nil {
+		t.Errorf("Fail to drop satelite %s, revision %d: %s", "InvoiceOrder", 0, err.Error())
 		tx.Rollback()
 		return
 	}

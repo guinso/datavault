@@ -50,6 +50,42 @@ func TestCreateSatelite(t *testing.T) {
 		},
 	})
 
+	_testCreateSatelite(tx, t, &SateliteDefinition{
+		Name:     "InvoiceOrder",
+		Revision: 0,
+		HubReference: &HubReference{
+			HubName:  "InvoiceOrder",
+			Revision: 0,
+		},
+		Attributes: []SateliteAttributeDefinition{
+			SateliteAttributeDefinition{
+				Name:       "No",
+				DataType:   rdbmstool.INTEGER,
+				Length:     10,
+				IsNullable: false,
+			},
+			SateliteAttributeDefinition{
+				Name:       "Description",
+				DataType:   rdbmstool.CHAR,
+				Length:     100,
+				IsNullable: false,
+			},
+			SateliteAttributeDefinition{
+				Name:             "UnitPrice",
+				DataType:         rdbmstool.DECIMAL,
+				Length:           10,
+				DecimalPrecision: 2,
+				IsNullable:       false,
+			},
+			SateliteAttributeDefinition{
+				Name:       "Qty",
+				DataType:   rdbmstool.INTEGER,
+				Length:     10,
+				IsNullable: false,
+			},
+		},
+	})
+
 	tx.Rollback()
 }
 

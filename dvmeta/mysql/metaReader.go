@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/guinso/datavault/definition"
@@ -21,7 +20,8 @@ type MetaReader struct {
 //*must provide database transaction handler
 //example hub name: TaxInvoice, revision: 0
 func (metaReader *MetaReader) GetHubDefinition(
-	hubName string, revision int, dbHandler rdbmstool.DbHandlerProxy) (*definition.HubDefinition, error) {
+	hubName string, revision int, dbHandler rdbmstool.DbHandlerProxy) (
+	*definition.HubDefinition, error) {
 
 	hubDbName := fmt.Sprintf("hub_%s_rev%d", stringtool.ToSnakeCase(hubName), revision)
 
@@ -33,7 +33,7 @@ func (metaReader *MetaReader) GetHubDefinition(
 	hubDef := definition.HubDefinition{
 		Name:     hubName,
 		Revision: revision}
-	hubHashKey := metaReader.makeDVHashKey(hubName)
+	hubHashKey := makeDVHashKey(hubName)
 	hasHashKeyCol := false
 	hasLoadDateCol := false
 	hasRecordSourceCol := false
@@ -87,7 +87,10 @@ func (metaReader *MetaReader) GetHubDefinition(
 }
 
 //GetLinkDefinition to get link metainfo based on link name and its revision number
-func (metaReader *MetaReader) GetLinkDefinition(linkName string, revision int, dbHandler rdbmstool.DbHandlerProxy) (*definition.LinkDefinition, error) {
+func (metaReader *MetaReader) GetLinkDefinition(
+	linkName string, revision int, dbHandler rdbmstool.DbHandlerProxy) (
+	*definition.LinkDefinition, error) {
+
 	linkDbName := fmt.Sprintf("link_%s_rev%d", stringtool.ToSnakeCase(linkName), revision)
 
 	//read all FK records
@@ -105,7 +108,7 @@ func (metaReader *MetaReader) GetLinkDefinition(linkName string, revision int, d
 	hasLoadDate := false
 	hasRecordSource := false
 
-	expectedhasKey := metaReader.makeDVHashKey(linkName)
+	expectedhasKey := makeDVHashKey(linkName)
 	for _, col := range tableDef.Columns {
 		switch col.DataType {
 		case rdbmstool.CHAR:
@@ -144,14 +147,17 @@ func (metaReader *MetaReader) GetLinkDefinition(linkName string, revision int, d
 				" but found %s has %d pair instead", fk.Name, len(fk.Columns))
 		}
 
-		_, name, revision, extractErr := extractDbEntityName(linkDbName)
+		entityType, name, revision, extractErr := extractDbEntityName(fk.ReferenceTableName)
 		if extractErr != nil {
 			return nil, extractErr
 		}
-		linkDefinition.HubReferences = append(linkDefinition.HubReferences,
-			definition.HubReference{
-				HubName:  name,
-				Revision: revision})
+
+		if entityType == definition.HUB {
+			linkDefinition.HubReferences = append(linkDefinition.HubReferences,
+				definition.HubReference{
+					HubName:  name,
+					Revision: revision})
+		}
 	}
 
 	if len(linkDefinition.HubReferences) < 2 {
@@ -163,7 +169,9 @@ func (metaReader *MetaReader) GetLinkDefinition(linkName string, revision int, d
 }
 
 //GetSateliteDefinition get satelite metainfo based on satelite name and its revision number
-func (metaReader *MetaReader) GetSateliteDefinition(satName string, revision int, dbHandler rdbmstool.DbHandlerProxy) (*definition.SateliteDefinition, error) {
+func (metaReader *MetaReader) GetSateliteDefinition(
+	satName string, revision int, dbHandler rdbmstool.DbHandlerProxy) (
+	*definition.SateliteDefinition, error) {
 
 	satDbName := fmt.Sprintf("sat_%s_rev%d", stringtool.ToSnakeCase(satName), revision)
 
@@ -317,6 +325,7 @@ func (metaReader *MetaReader) GetSateliteDefinition(satName string, revision int
 
 //GetAllHubs list all available hub(s) entity in given database schema
 func (metaReader *MetaReader) GetAllHubs(dbHandler rdbmstool.DbHandlerProxy) []dvmeta.EntityInfo {
+
 	x, err := getTableName(dbHandler, metaReader.DbName, "hub_%")
 
 	if err != nil {
@@ -359,9 +368,9 @@ func (metaReader *MetaReader) SearchEntities(dbHandler rdbmstool.DbHandlerProxy,
 	return x
 }
 
+//GetRelationship search all direct related links and satelites for provided hub
 func (metaReader *MetaReader) GetRelationship(dbHandler rdbmstool.DbHandlerProxy, hubName string, hubRevision int) (*dvmeta.HubRelationship, error) {
-	//TODO: get related satalites which refer to specified hub
-	//return nil, errors.New("Not implemented yet...")
+	//get related satalites which refer to specified hub
 	hubTableName := fmt.Sprintf("hub_%s_rev%d", stringtool.ToSnakeCase(hubName), hubRevision)
 	tables, linkErr := mysqlMeta.GetLinkedFK(dbHandler, metaReader.DbName, hubTableName)
 	if linkErr != nil {
@@ -394,8 +403,9 @@ func (metaReader *MetaReader) GetRelationship(dbHandler rdbmstool.DbHandlerProxy
 				return nil, linkErr
 			}
 
-			//append hub link relationship...
-			hubLink, hubLinkErr := getHubLinkRelationship(dbHandler, linkDef, hubName, hubRevision)
+			//append hub link relationship
+			hubLink, hubLinkErr := metaReader.getHubLinkRelationship(
+				dbHandler, linkDef, hubName, hubRevision)
 			if hubLinkErr != nil {
 				return nil, hubLinkErr
 			}
@@ -408,7 +418,7 @@ func (metaReader *MetaReader) GetRelationship(dbHandler rdbmstool.DbHandlerProxy
 	return &result, nil
 }
 
-func getHubLinkRelationship(dbHandler rdbmstool.DbHandlerProxy, linkDef *definition.LinkDefinition,
+func (metaReader *MetaReader) getHubLinkRelationship(dbHandler rdbmstool.DbHandlerProxy, linkDef *definition.LinkDefinition,
 	hubName string, hubRevision int) (*dvmeta.HubLinkRelationship, error) {
 
 	hubLink := dvmeta.HubLinkRelationship{
@@ -422,79 +432,36 @@ func getHubLinkRelationship(dbHandler rdbmstool.DbHandlerProxy, linkDef *definit
 	for _, hubRef := range linkDef.HubReferences {
 
 		tmpTableName := fmt.Sprintf("hub_%s_rev%d", stringtool.ToSnakeCase(hubRef.HubName), hubRef.Revision)
-		//skip entry point's hub name
+		//append if it is not reference to entry point's hub name
 		if strings.Compare(tmpTableName, expectedTableName) != 0 {
+			//made a hub definition
+			hubDef, hubErr := metaReader.GetHubDefinition(hubRef.HubName, hubRef.Revision, dbHandler)
+			if hubErr != nil {
+				return nil, hubErr
+			}
+			hubLink.Hubs = append(hubLink.Hubs, *hubDef)
 
+			//search all related satelite(s) for linked hub
+			tables, tableErr := mysqlMeta.GetLinkedFK(dbHandler, metaReader.DbName, hubRef.GetDbTableName())
+			if tableErr != nil {
+				return nil, tableErr
+			}
+
+			for _, table := range tables {
+				entityType, name, rev, err := extractDbEntityName(table)
+				if err != nil || entityType != definition.SATELITE {
+					continue //skip if it is not a valid format satelite db table
+				}
+
+				satDef, satErr := metaReader.GetSateliteDefinition(name, rev, dbHandler)
+				if satErr != nil {
+					return nil, satErr
+				}
+
+				hubLink.Satelites = append(hubLink.Satelites, *satDef)
+			}
 		}
 	}
 
 	return &hubLink, nil
-}
-
-func (metaReader *MetaReader) makeDVHashKey(entityName string) string {
-	return fmt.Sprintf("%s_hash_key", stringtool.ToSnakeCase(entityName))
-}
-
-//GetDbMetaTableName to get list of datatables' name which start with provided keyword
-func getTableName(db rdbmstool.DbHandlerProxy, databaseName string, keyword string) ([]dvmeta.EntityInfo, error) {
-
-	tables, tableErr := mysqlMeta.GetTableNames(db, databaseName, keyword)
-	if tableErr != nil {
-		return nil, fmt.Errorf("DV MySQL meta reader fail to query data table from database: " + tableErr.Error())
-	}
-
-	var result []dvmeta.EntityInfo
-	for _, table := range tables {
-		entity, name, revision, err := extractDbEntityName(table)
-
-		if err == nil {
-			result = append(result, dvmeta.EntityInfo{
-				Type:     entity,
-				Name:     name,
-				Revision: revision})
-		}
-	}
-
-	return result, nil
-}
-
-func extractDbEntityName(dbTableName string) (
-	definition.EntityType, string, int, error) {
-
-	//validate prefix
-	var prefix string
-	var entityType definition.EntityType
-	if strings.HasPrefix(dbTableName, "hub_") {
-		prefix = "hub_"
-		entityType = definition.HUB
-
-	} else if strings.HasPrefix(dbTableName, "link_") {
-		prefix = "link_"
-		entityType = definition.LINK
-
-	} else if strings.HasPrefix(dbTableName, "sat_") {
-		prefix = "sat_"
-		entityType = definition.SATELITE
-
-	} else {
-		return 0, "", 0, fmt.Errorf("Unrecognized db table for data vault: %s", dbTableName)
-	}
-
-	//extract and validate entity name
-	trimHeader := strings.TrimPrefix(dbTableName, prefix)
-	raws := strings.Split(trimHeader, "_rev")
-	if len(raws) != 2 {
-		return 0, "", 0, fmt.Errorf("Invalid data vault db table name format: %s",
-			dbTableName)
-	}
-	name := stringtool.SnakeToCamelCase(raws[0])
-
-	//validate suffix (_rev)
-	rev, revErr := strconv.Atoi(raws[1])
-	if revErr != nil {
-		return 0, "", 0, fmt.Errorf("Invalid revision value %s from table name %s",
-			raws[1], dbTableName)
-	}
-
-	return entityType, name, rev, nil
 }
