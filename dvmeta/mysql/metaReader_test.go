@@ -192,25 +192,26 @@ func TestGetRelationship(t *testing.T) {
 	}
 
 	//dump hubDescriptor
-	t.Log(fmt.Sprintf("==== %s(%d) Descriptor ====",
-		hubDescriptor.HubName, hubDescriptor.HubRevision), "")
-	for satIndex, satDef := range hubDescriptor.Satelites {
-		t.Log(fmt.Sprintf("#Satelite[%d] %s(%d)", satIndex, satDef.Name, satDef.Revision), "")
-		for _, attr := range satDef.Attributes {
-			t.Log(fmt.Sprintf("--%s [%s]", attr.Name, attr.DataType.String()))
-		}
-	}
-	t.Log(fmt.Sprintf("-----------------"), "")
-	for linkIndex, linkHub := range hubDescriptor.Links {
-		for _, satDef := range linkHub.Satelites {
-			t.Log(fmt.Sprintf("#Link-Sat[%d] %s(%d)",
-				linkIndex, satDef.Name, satDef.Revision), "")
+	/*
+		t.Log(fmt.Sprintf("==== %s(%d) Descriptor ====",
+			hubDescriptor.HubName, hubDescriptor.HubRevision), "")
+		for satIndex, satDef := range hubDescriptor.Satelites {
+			t.Log(fmt.Sprintf("#Satelite[%d] %s(%d)", satIndex, satDef.Name, satDef.Revision), "")
 			for _, attr := range satDef.Attributes {
 				t.Log(fmt.Sprintf("--%s [%s]", attr.Name, attr.DataType.String()))
 			}
 		}
-	}
-	t.Error("***Intentionally make it failed to enable printing log message***")
+		t.Log(fmt.Sprintf("-----------------"), "")
+		for linkIndex, linkHub := range hubDescriptor.Links {
+			for _, satDef := range linkHub.Satelites {
+				t.Log(fmt.Sprintf("#Link-Sat[%d] %s(%d)",
+					linkIndex, satDef.Name, satDef.Revision), "")
+				for _, attr := range satDef.Attributes {
+					t.Log(fmt.Sprintf("--%s [%s]", attr.Name, attr.DataType.String()))
+				}
+			}
+		}
+		t.Error("***Intentionally make it failed to enable printing log message***")*/
 
 	transaction.Rollback()
 
